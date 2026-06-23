@@ -1,0 +1,1 @@
+print("malicious-pkg loaded")
